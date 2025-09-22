@@ -34,19 +34,6 @@ export const outstandingLoans: OutstandingLoan[] = [
   },
 ];
 
-export type Creditor = {
-  id: string;
-  name: string;
-  email: string;
-  status: 'approved' | 'pending';
-};
-
-export const creditors: Creditor[] = [
-  { id: '1', name: 'Global Finance Inc.', email: 'contact@globalfinance.com', status: 'approved' },
-  { id: '2', name: 'Local Lenders LLC', email: 'support@locallenders.com', status: 'approved' },
-  { id: '3', name: 'Jane Doe', email: 'jane.doe@email.com', status: 'approved' },
-];
-
 export type LoanRequest = {
   id: string;
   applicant: {

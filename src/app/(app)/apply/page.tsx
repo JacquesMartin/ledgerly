@@ -1,18 +1,42 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { creditors } from '@/lib/mock-data';
+import type { Creditor } from '@/lib/types';
+import { useAuth } from '@/hooks/use-auth';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Loader2 } from 'lucide-react';
 
 export default function ApplyPage() {
+  const { user } = useAuth();
+  const [creditors, setCreditors] = useState<Creditor[]>([]);
+  const [loadingCreditors, setLoadingCreditors] = useState(true);
   const [amount, setAmount] = useState(0);
   const [term, setTerm] = useState(0);
   const [interestRate, setInterestRate] = useState(5);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(collection(db, `users/${user.uid}/creditors`), where('status', '==', 'approved'));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const creditorsData: Creditor[] = [];
+      querySnapshot.forEach((doc) => {
+        creditorsData.push({ id: doc.id, ...doc.data() } as Creditor);
+      });
+      setCreditors(creditorsData);
+      setLoadingCreditors(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const estimatedMonthlyPayment = useMemo(() => {
     if (amount <= 0 || term <= 0 || interestRate <= 0) {
@@ -54,13 +78,17 @@ export default function ApplyPage() {
                     <SelectValue placeholder="Choose a creditor" />
                   </SelectTrigger>
                   <SelectContent>
-                    {creditors
-                      .filter((c) => c.status === 'approved')
-                      .map((creditor) => (
+                    {loadingCreditors ? (
+                      <div className="flex items-center justify-center p-4">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      creditors.map((creditor) => (
                         <SelectItem key={creditor.id} value={creditor.id}>
                           {creditor.name}
                         </SelectItem>
-                      ))}
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
