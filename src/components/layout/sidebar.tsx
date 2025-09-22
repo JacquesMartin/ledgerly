@@ -15,6 +15,7 @@ import {
   Users,
   FileText,
   Landmark,
+  User,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -39,6 +40,11 @@ const menuItems = [
     href: '/loan-requests',
     icon: FileText,
     label: 'Loan Requests',
+  },
+  {
+    href: '/profile',
+    icon: User,
+    label: 'Profile',
   },
 ];
 
