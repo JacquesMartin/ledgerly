@@ -1,14 +1,19 @@
+
 'use client';
 
 import { useFormState, useFormStatus } from 'react-dom';
 import { getLoanAssessment, type AIState } from '@/app/(app)/loan-requests/actions';
-import type { LoanRequest } from '@/lib/mock-data';
+import type { LoanApplication } from '@/lib/types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Loader2, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -24,8 +29,11 @@ function SubmitButton() {
   );
 }
 
-function RecommendationResult({ data }: { data: AIState['data'] }) {
+function RecommendationResult({ data, loanId }: { data: AIState['data'], loanId: string }) {
   if (!data) return null;
+
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const getBadgeVariant = () => {
     switch (data.recommendation) {
@@ -39,6 +47,29 @@ function RecommendationResult({ data }: { data: AIState['data'] }) {
         return 'outline';
     }
   };
+
+  const handleDecision = async (status: 'approved' | 'rejected') => {
+    setLoading(true);
+    try {
+      const loanRef = doc(db, 'loan_applications', loanId);
+      await updateDoc(loanRef, { status });
+      toast({
+        title: 'Success',
+        description: `Loan has been ${status}.`,
+      });
+    } catch (error) {
+      console.error(`Error updating loan:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: `Error ${status === 'approved' ? 'approving' : 'rejecting'} loan`,
+        description: errorMessage,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="mt-6 space-y-4 rounded-lg border bg-secondary/50 p-4">
@@ -60,17 +91,17 @@ function RecommendationResult({ data }: { data: AIState['data'] }) {
         </div>
       )}
       <div className="flex gap-2 pt-4">
-        <Button size="sm">
-          <ThumbsUp className="mr-2 h-4 w-4" />
+        <Button size="sm" onClick={() => handleDecision('approved')} disabled={loading}>
+          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4" />}
           Approve
         </Button>
         {data.recommendation === 'modify' && (
-          <Button size="sm" variant="outline">
+          <Button size="sm" variant="outline" disabled>
             Apply Mods & Approve
           </Button>
         )}
-        <Button size="sm" variant="destructive">
-          <ThumbsDown className="mr-2 h-4 w-4" />
+        <Button size="sm" variant="destructive" onClick={() => handleDecision('rejected')} disabled={loading}>
+           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4" />}
           Reject
         </Button>
       </div>
@@ -79,7 +110,7 @@ function RecommendationResult({ data }: { data: AIState['data'] }) {
 }
 
 type Props = {
-  request: LoanRequest;
+  request: LoanApplication;
 };
 
 export function CreditorLoanTool({ request }: Props) {
@@ -90,7 +121,7 @@ export function CreditorLoanTool({ request }: Props) {
   };
   const [state, formAction] = useFormState(getLoanAssessment, initialState);
 
-  const loanDetailsString = `Amount: $${request.amount}, Term: ${request.termMonths} months, Purpose: ${request.purpose}`;
+  const loanDetailsString = `Amount: $${request.amount}, Term: ${request.termMonths} months, Interest: ${request.interestRate}%, Purpose: ${request.purpose}`;
 
   return (
     <Card className="border-none shadow-none">
@@ -109,7 +140,7 @@ export function CreditorLoanTool({ request }: Props) {
         </form>
 
         {state.error && <p className="mt-4 text-sm text-destructive">{state.error}</p>}
-        <RecommendationResult data={state.data} />
+        <RecommendationResult data={state.data} loanId={request.id} />
       </CardContent>
     </Card>
   );

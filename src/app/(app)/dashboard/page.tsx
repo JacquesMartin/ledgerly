@@ -1,9 +1,44 @@
+
+'use client';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign } from 'lucide-react';
-import { outstandingLoans } from '@/lib/mock-data';
+import { DollarSign, Loader2 } from 'lucide-react';
+import type { LoanApplication } from '@/lib/types';
 import { OutstandingLoanCard } from '@/components/dashboard/outstanding-loan-card';
+import { useAuth } from '@/hooks/use-auth';
+import { useEffect, useState } from 'react';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [loans, setLoans] = useState<LoanApplication[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+
+    // This query fetches loans where the current user is the BORROWER and the loan is approved.
+    const q = query(
+      collection(db, 'loan_applications'),
+      where('applicant.uid', '==', user.uid),
+      where('status', '==', 'approved')
+    );
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const loansData: LoanApplication[] = [];
+      querySnapshot.forEach((doc) => {
+        loansData.push({ id: doc.id, ...doc.data() } as LoanApplication);
+      });
+      setLoans(loansData);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+  
   // Mocked data for today's receivables
   const todaysReceivables = 1250.0;
 
@@ -39,13 +74,23 @@ export default function DashboardPage() {
 
       <div>
         <h2 className="text-2xl font-bold font-headline tracking-tight mb-4">
-          Outstanding Loans
+          My Outstanding Loans
         </h2>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {outstandingLoans.map((loan) => (
-            <OutstandingLoanCard key={loan.id} loan={loan} />
-          ))}
-        </div>
+        {loading ? (
+           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+           </div>
+        ) : loans.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {loans.map((loan) => (
+              <OutstandingLoanCard key={loan.id} loan={loan} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">You have no outstanding loans.</p>
+        )}
       </div>
     </div>
   );

@@ -8,19 +8,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import type { Creditor } from '@/lib/types';
+import type { Creditor, LoanApplication } from '@/lib/types';
 import { useAuth } from '@/hooks/use-auth';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ApplyPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [creditors, setCreditors] = useState<Creditor[]>([]);
   const [loadingCreditors, setLoadingCreditors] = useState(true);
-  const [amount, setAmount] = useState(0);
-  const [term, setTerm] = useState(0);
+  const [formLoading, setFormLoading] = useState(false);
+  
+  const [selectedCreditor, setSelectedCreditor] = useState('');
+  const [amount, setAmount] = useState(5000);
+  const [term, setTerm] = useState(24);
   const [interestRate, setInterestRate] = useState(5);
+  const [purpose, setPurpose] = useState('');
+
 
   useEffect(() => {
     if (!user) return;
@@ -46,7 +53,6 @@ export default function ApplyPage() {
     const monthlyInterestRate = annualInterestRate / 12;
     const totalPayments = term;
     
-    // Standard loan amortization formula
     const monthlyPayment =
       amount *
       (monthlyInterestRate * Math.pow(1 + monthlyInterestRate, totalPayments)) /
@@ -54,6 +60,72 @@ export default function ApplyPage() {
 
     return monthlyPayment;
   }, [amount, term, interestRate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !selectedCreditor || !amount || !term || !purpose) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please fill out all fields.',
+      });
+      return;
+    }
+    setFormLoading(true);
+
+    try {
+      const dueDate = new Date();
+      dueDate.setMonth(dueDate.getMonth() + term);
+
+      const loanApplication: Omit<LoanApplication, 'id'> = {
+        applicant: {
+          uid: user.uid,
+          name: user.displayName || 'Anonymous',
+          avatarUrl: user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`,
+          avatarHint: 'person face'
+        },
+        creditorId: selectedCreditor,
+        amount,
+        termMonths: term,
+        interestRate,
+        purpose,
+        status: 'pending',
+        date: new Date().toISOString(),
+        dueDate: dueDate.toISOString(),
+        creditHistory: 'Credit history not available yet. This will be implemented later.',
+        marketConditions: 'Market conditions not available yet. This will be implemented later.',
+      };
+
+      await addDoc(collection(db, 'loan_applications'), {
+        ...loanApplication,
+        createdAt: serverTimestamp(),
+      });
+
+      toast({
+        title: 'Success',
+        description: 'Your loan application has been submitted!',
+      });
+      
+      // Reset form
+      setSelectedCreditor('');
+      setAmount(5000);
+      setTerm(24);
+      setInterestRate(5);
+      setPurpose('');
+
+    } catch (error) {
+      console.error('Error submitting application: ', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: 'Error submitting application',
+        description: errorMessage,
+      });
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -70,10 +142,10 @@ export default function ApplyPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form className="grid gap-6">
+            <form onSubmit={handleSubmit} className="grid gap-6">
               <div className="grid gap-2">
                 <Label htmlFor="creditor">Select Creditor</Label>
-                <Select>
+                <Select value={selectedCreditor} onValueChange={setSelectedCreditor}>
                   <SelectTrigger id="creditor">
                     <SelectValue placeholder="Choose a creditor" />
                   </SelectTrigger>
@@ -128,10 +200,11 @@ export default function ApplyPage() {
 
               <div className="grid gap-2">
                 <Label htmlFor="purpose">Purpose of Loan</Label>
-                <Textarea id="purpose" placeholder="e.g., To cover expenses for a home renovation project." />
+                <Textarea id="purpose" placeholder="e.g., To cover expenses for a home renovation project." value={purpose} onChange={e => setPurpose(e.target.value)} />
               </div>
 
-              <Button type="submit" className="w-full md:w-auto bg-accent text-accent-foreground hover:bg-accent/90">
+              <Button type="submit" className="w-full md:w-auto bg-accent text-accent-foreground hover:bg-accent/90" disabled={formLoading}>
+                {formLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
                 Submit Application
               </Button>
             </form>
