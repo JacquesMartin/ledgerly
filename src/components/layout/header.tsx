@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { LogOut, User } from 'lucide-react';
+import { Bell, LogOut, User } from 'lucide-react';
 import Link from 'next/link';
 
 export function AppHeader() {
@@ -18,7 +18,11 @@ export function AppHeader() {
       <div className="md:hidden">
         <SidebarTrigger />
       </div>
-      <div className="flex w-full items-center justify-end gap-4">
+      <div className="flex w-full items-center justify-end gap-2">
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Bell className="h-5 w-5" />
+          <span className="sr-only">Notifications</span>
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-10 w-10 rounded-full">
