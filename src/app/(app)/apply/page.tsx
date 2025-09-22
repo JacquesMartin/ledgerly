@@ -12,14 +12,13 @@ import { creditors } from '@/lib/mock-data';
 export default function ApplyPage() {
   const [amount, setAmount] = useState(0);
   const [term, setTerm] = useState(0);
+  const [interestRate, setInterestRate] = useState(5);
 
   const estimatedMonthlyPayment = useMemo(() => {
-    if (amount <= 0 || term <= 0) {
+    if (amount <= 0 || term <= 0 || interestRate <= 0) {
       return 0;
     }
-    // Using a simple interest calculation for estimation
-    // This assumes a flat 5% annual interest rate for demonstration
-    const annualInterestRate = 0.05;
+    const annualInterestRate = interestRate / 100;
     const monthlyInterestRate = annualInterestRate / 12;
     const totalPayments = term;
     
@@ -30,7 +29,7 @@ export default function ApplyPage() {
       (Math.pow(1 + monthlyInterestRate, totalPayments) - 1);
 
     return monthlyPayment;
-  }, [amount, term]);
+  }, [amount, term, interestRate]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -66,7 +65,7 @@ export default function ApplyPage() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="grid gap-2">
                   <Label htmlFor="amount">Loan Amount ($)</Label>
                   <Input
@@ -85,6 +84,16 @@ export default function ApplyPage() {
                     placeholder="e.g., 24"
                     onChange={(e) => setTerm(Number(e.target.value))}
                     value={term || ''}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="interest-rate">Interest Rate (%)</Label>
+                  <Input
+                    id="interest-rate"
+                    type="number"
+                    placeholder="e.g., 5"
+                    onChange={(e) => setInterestRate(Number(e.target.value))}
+                    value={interestRate || ''}
                   />
                 </div>
               </div>
@@ -114,6 +123,10 @@ export default function ApplyPage() {
                 ${amount.toLocaleString('en-US') || '0'}
               </div>
             </div>
+             <div className="space-y-1">
+              <div className="text-sm text-muted-foreground">Interest Rate</div>
+              <div className="text-2xl font-bold">{interestRate || '0'}%</div>
+            </div>
             <div className="space-y-1">
               <div className="text-sm text-muted-foreground">Payment Term</div>
               <div className="text-2xl font-bold">{term || '0'} months</div>
@@ -125,7 +138,7 @@ export default function ApplyPage() {
               </div>
             </div>
             <p className="text-xs text-muted-foreground italic">
-              *Estimate based on a 5% annual interest rate. Actual terms may vary.
+              *Actual terms may vary.
             </p>
           </CardContent>
         </Card>
