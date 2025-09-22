@@ -57,7 +57,7 @@ export function AppSidebar() {
         <Link href="/dashboard" className="flex items-center gap-2">
           <Landmark className="h-8 w-8 text-primary" />
           <span className="font-bold text-lg text-foreground group-data-[collapsible=icon]:hidden">
-            LoanLink
+            Ledgerly
           </span>
         </Link>
       </SidebarHeader>
