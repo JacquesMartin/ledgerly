@@ -12,14 +12,14 @@ export default function CreditorsPage() {
     <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold font-headline tracking-tight">Manage Creditors</h1>
-        <p className="text-muted-foreground">Add new creditors and view their status.</p>
+        <p className="text-muted-foreground">Add new creditors to your personal network.</p>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Add a New Creditor</CardTitle>
           <CardDescription>
-            Enter the email of the creditor you want to add. They will receive a request to connect.
+            Enter the email of the creditor you want to add.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -30,7 +30,7 @@ export default function CreditorsPage() {
             </div>
             <Button type="submit" className="w-full sm:w-auto">
               <PlusCircle className="mr-2 h-4 w-4" />
-              Send Request
+              Add Creditor
             </Button>
           </form>
         </CardContent>
@@ -46,7 +46,6 @@ export default function CreditorsPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
-                <TableHead className="text-right">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -54,12 +53,6 @@ export default function CreditorsPage() {
                 <TableRow key={creditor.id}>
                   <TableCell className="font-medium">{creditor.name}</TableCell>
                   <TableCell>{creditor.email}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={creditor.status === 'approved' ? 'default' : 'secondary'}
-                      className={creditor.status === 'approved' ? 'bg-accent text-accent-foreground' : ''}>
-                      {creditor.status.charAt(0).toUpperCase() + creditor.status.slice(1)}
-                    </Badge>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
