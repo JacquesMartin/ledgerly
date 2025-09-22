@@ -42,6 +42,12 @@ export default function LoanRequestsPage() {
             <AccordionContent className="bg-card p-4 md:p-6 border-t">
               <div className="grid md:grid-cols-2 gap-6 mb-6">
                 <div>
+                  <h4 className="font-semibold text-muted-foreground text-sm">Loan Details</h4>
+                  <p>
+                    ${request.amount.toLocaleString()} for {request.termMonths} months
+                  </p>
+                </div>
+                <div>
                   <h4 className="font-semibold text-muted-foreground text-sm">Loan Purpose</h4>
                   <p>{request.purpose}</p>
                 </div>

@@ -55,6 +55,7 @@ export type LoanRequest = {
     avatarHint: string;
   };
   amount: number;
+  termMonths: number;
   purpose: string;
   creditHistory: string;
   marketConditions: string;
@@ -70,6 +71,7 @@ export const loanRequests: LoanRequest[] = [
       avatarHint: 'man glasses',
     },
     amount: 5000,
+    termMonths: 36,
     purpose: 'Home renovation',
     creditHistory:
       'David Jones has a FICO score of 720. He has a 5-year credit history with on-time payments for a car loan and two credit cards. No delinquencies or defaults. Credit utilization is at 30%.',
@@ -85,6 +87,7 @@ export const loanRequests: LoanRequest[] = [
       avatarHint: 'woman blonde',
     },
     amount: 10000,
+    termMonths: 60,
     purpose: 'Small business startup capital',
     creditHistory:
       'Emily Davis has a FICO score of 650. She has a 3-year credit history, with a few late payments on a credit card 2 years ago. She has a student loan that is in good standing. Credit utilization is at 60%.',

@@ -7,6 +7,8 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Loader2, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
 import { Badge } from './ui/badge';
+import { Textarea } from './ui/textarea';
+import { Label } from './ui/label';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -51,10 +53,10 @@ function RecommendationResult({ data }: { data: AIState['data'] }) {
         <h5 className="font-semibold">Justification:</h5>
         <p className="text-sm text-muted-foreground">{data.justification}</p>
       </div>
-      {data.modifiedTerms && (
-        <div>
-          <h5 className="font-semibold">Suggested Modifications:</h5>
-          <p className="text-sm text-muted-foreground">{data.modifiedTerms}</p>
+      {data.recommendation === 'modify' && data.modifiedTerms && (
+        <div className="grid gap-2">
+          <Label htmlFor="modified-terms">Suggested Modifications:</Label>
+          <Textarea id="modified-terms" defaultValue={data.modifiedTerms} className="bg-background" rows={3}/>
         </div>
       )}
       <div className="flex gap-2 pt-4">
@@ -88,7 +90,7 @@ export function CreditorLoanTool({ request }: Props) {
   };
   const [state, formAction] = useFormState(getLoanAssessment, initialState);
 
-  const loanDetailsString = `Amount: $${request.amount}, Purpose: ${request.purpose}`;
+  const loanDetailsString = `Amount: $${request.amount}, Term: ${request.termMonths} months, Purpose: ${request.purpose}`;
 
   return (
     <Card className="border-none shadow-none">
