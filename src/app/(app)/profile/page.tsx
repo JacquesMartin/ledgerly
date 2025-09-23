@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -18,62 +18,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import type { UserPreferences } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
 
 export default function ProfilePage() {
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [currency, setCurrency] = useState<UserPreferences['currency']>('USD');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    const fetchPreferences = async () => {
-      setLoading(true);
-      const prefDocRef = doc(db, `user_preferences/${user.uid}`);
-      const prefDoc = await getDoc(prefDocRef);
-      if (prefDoc.exists()) {
-        const prefs = prefDoc.data() as UserPreferences;
-        setCurrency(prefs.currency);
-      }
-      setLoading(false);
-    };
-    fetchPreferences();
-  }, [user]);
+  const { preferences, setCurrency, loading, saving } = useUserPreferences();
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'You must be logged in to save settings.',
-      });
-      return;
-    }
-    setSaving(true);
-    try {
-      const prefDocRef = doc(db, `user_preferences/${user.uid}`);
-      await setDoc(prefDocRef, { currency }, { merge: true });
+    const success = await setCurrency(preferences.currency);
+    if (success) {
       toast({
         title: 'Success!',
         description: 'Your currency setting has been saved.',
       });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+    } else {
       toast({
         variant: 'destructive',
         title: 'Error saving settings',
-        description: errorMessage,
+        description: 'An unknown error occurred.',
       });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -104,7 +71,12 @@ export default function ProfilePage() {
             <form onSubmit={handleSaveSettings} className="max-w-md space-y-4">
               <div className="grid gap-2">
                 <Label htmlFor="currency">Currency</Label>
-                <Select value={currency} onValueChange={(value) => setCurrency(value as UserPreferences['currency'])}>
+                <Select
+                  value={preferences.currency}
+                  onValueChange={(value) =>
+                    setCurrency(value as UserPreferences['currency'], false)
+                  }
+                >
                   <SelectTrigger id="currency">
                     <SelectValue placeholder="Select a currency" />
                   </SelectTrigger>

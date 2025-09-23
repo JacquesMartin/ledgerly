@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { AuthProvider } from '@/hooks/use-auth';
+import { UserPreferencesProvider } from '@/hooks/use-user-preferences';
 
 export const metadata: Metadata = {
   title: 'Ledgerly',
@@ -25,7 +26,9 @@ export default function RootLayout({
       </head>
       <body className="font-body h-full antialiased">
         <AuthProvider>
-          {children}
+          <UserPreferencesProvider>
+            {children}
+          </UserPreferencesProvider>
         </AuthProvider>
         <Toaster />
       </body>

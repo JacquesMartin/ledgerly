@@ -10,9 +10,12 @@ import { useEffect, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { formatCurrency } from '@/lib/utils';
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const { preferences, loading: preferencesLoading } = useUserPreferences();
   const [loans, setLoans] = useState<LoanApplication[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,9 +65,13 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-4xl font-bold text-accent">
-              ${todaysReceivables.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
+            {preferencesLoading ? (
+              <Skeleton className="h-9 w-32" />
+            ) : (
+              <div className="text-4xl font-bold text-accent">
+                {formatCurrency(todaysReceivables, preferences.currency)}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               Total amount due today.
             </p>

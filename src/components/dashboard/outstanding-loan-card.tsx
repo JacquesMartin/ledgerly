@@ -5,13 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '../ui/badge';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Loader2 } from 'lucide-react';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { formatCurrency } from '@/lib/utils';
+import { Skeleton } from '../ui/skeleton';
 
 type Props = {
   loan: LoanApplication;
 };
 
 export function OutstandingLoanCard({ loan }: Props) {
+  const { preferences, loading: preferencesLoading } = useUserPreferences();
   const dueDate = parseISO(loan.dueDate);
   const isOverdue = new Date() > dueDate;
 
@@ -24,9 +28,13 @@ export function OutstandingLoanCard({ loan }: Props) {
         </Avatar>
         <div className="flex-1">
           <CardTitle className="text-lg font-headline">{loan.applicant.name}</CardTitle>
-          <CardDescription className="text-2xl font-bold text-accent">
-            ${loan.amount.toLocaleString()}
-          </CardDescription>
+          {preferencesLoading ? (
+            <Skeleton className="h-7 w-24 mt-1" />
+          ) : (
+            <CardDescription className="text-2xl font-bold text-accent">
+              {formatCurrency(loan.amount, preferences.currency)}
+            </CardDescription>
+          )}
         </div>
       </CardHeader>
       <CardContent className="flex-grow">
