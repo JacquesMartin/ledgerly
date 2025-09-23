@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '../ui/badge';
-import { CalendarDays, GitPullRequest, Loader2, ThumbsUp } from 'lucide-react';
+import { CalendarDays, GitPullRequest, Loader2, ThumbsUp, FileText, UserPlus } from 'lucide-react';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
 import { formatCurrency } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
@@ -34,7 +34,11 @@ function ModifiedLoanDialog({ loan, onAccepted }: { loan: LoanApplication, onAcc
     setLoading(true);
     try {
       const loanRef = doc(db, 'loan_applications', loan.id);
-      await updateDoc(loanRef, { status: 'approved' });
+      await updateDoc(loanRef, { 
+          status: 'approved',
+          requiresCoMaker: false,
+          requiresDocuments: false,
+      });
       toast({
         title: 'Success',
         description: 'You have accepted the modified loan terms.',
@@ -51,6 +55,38 @@ function ModifiedLoanDialog({ loan, onAccepted }: { loan: LoanApplication, onAcc
     } finally {
       setLoading(false);
     }
+  }
+
+  const renderModificationDetails = () => {
+      if (loan.requiresDocuments) {
+          return (
+             <div className="p-4 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                <h4 className="font-semibold mb-2 text-yellow-800 dark:text-yellow-200">Documents Required</h4>
+                <p>The creditor has requested additional documents. Please upload them to continue.</p>
+                {/* In a real app, you would have a file upload component here */}
+                <Button className="mt-4" size="sm">Upload Documents</Button>
+            </div>
+          )
+      }
+      if (loan.requiresCoMaker) {
+          return (
+             <div className="p-4 rounded-md bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+                <h4 className="font-semibold mb-2 text-yellow-800 dark:text-yellow-200">Co-maker Required</h4>
+                <p>The creditor has requested a co-maker for this loan. Please provide co-maker details to continue.</p>
+                {/* In a real app, you would have a form here */}
+                <Button className="mt-4" size="sm">Add Co-maker</Button>
+            </div>
+          )
+      }
+       if (loan.modifiedTerms) {
+          return (
+             <div className="p-4 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+                <h4 className="font-semibold mb-2 text-accent">New Offer</h4>
+                <p className="whitespace-pre-wrap">{loan.modifiedTerms}</p>
+            </div>
+          )
+      }
+      return null;
   }
 
   return (
@@ -70,17 +106,16 @@ function ModifiedLoanDialog({ loan, onAccepted }: { loan: LoanApplication, onAcc
             <h4 className="font-semibold mb-2">Original Request</h4>
             <p>{preferencesLoading ? <Skeleton className="h-5 w-48"/> : `${formatCurrency(loan.amount, preferences.currency)} for ${loan.termMonths} months at ${loan.interestRate}%`}</p>
           </div>
-          <div className="p-4 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
-            <h4 className="font-semibold mb-2 text-accent">New Offer</h4>
-            <p className="whitespace-pre-wrap">{loan.modifiedTerms}</p>
-          </div>
+          {renderModificationDetails()}
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel>Close</AlertDialogCancel>
-          <AlertDialogAction onClick={handleAccept} disabled={loading} className="bg-accent text-accent-foreground hover:bg-accent/90">
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
-            Accept & Finalize
-          </AlertDialogAction>
+          {loan.modifiedTerms && (
+            <AlertDialogAction onClick={handleAccept} disabled={loading} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
+                Accept & Finalize
+            </AlertDialogAction>
+          )}
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -148,4 +183,3 @@ export function OutstandingLoanCard({ loan }: Props) {
     </Card>
   );
 }
-

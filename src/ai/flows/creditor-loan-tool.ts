@@ -36,6 +36,14 @@ const AssessLoanApplicationOutputSchema = z.object({
   justification: z
     .string()
     .describe('A detailed justification for the recommendation, including reasons for approval, modification, or rejection.'),
+  requireCoMaker: z
+    .boolean()
+    .optional()
+    .describe('If the recommendation is to modify, suggest whether a co-maker should be required.'),
+  requireDocuments: z
+    .boolean()
+    .optional()
+    .describe('If the recommendation is to modify, suggest whether additional documents (e.g., proof of income) should be required.'),
 });
 export type AssessLoanApplicationOutput = z.infer<typeof AssessLoanApplicationOutputSchema>;
 
@@ -55,10 +63,10 @@ Current Market Conditions: {{{currentMarketConditions}}}
 
 Recommendation:
 - If the applicant has a strong credit history and the loan terms are reasonable given the current market conditions, recommend approval.
-- If the applicant has a moderate credit history or the loan terms are slightly unfavorable, recommend modification with specific suggestions for adjusted terms.
+- If the applicant has a moderate credit history or the loan terms are slightly unfavorable, recommend modification with specific suggestions for adjusted terms. You may also suggest requiring a co-maker or additional documents if the risk is moderate.
 - If the applicant has a poor credit history or the loan terms are highly unfavorable, recommend rejection.
 
-Justification: Provide a clear and concise justification for your recommendation. If modifying the terms, explain why the changes are necessary and how they align with the applicant's credit history and current market conditions.
+Justification: Provide a clear and concise justification for your recommendation. If modifying the terms, explain why the changes are necessary and how they align with the applicant's credit history and current market conditions. If you suggest requiring a co-maker or documents, explain why.
 
 Output should be JSON format.`,
 });

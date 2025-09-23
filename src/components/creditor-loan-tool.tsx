@@ -6,7 +6,7 @@ import { getLoanAssessment, type AIState } from '@/app/(app)/loan-requests/actio
 import type { LoanApplication } from '@/lib/types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Loader2, Sparkles, ThumbsDown, ThumbsUp, Send } from 'lucide-react';
+import { Loader2, Sparkles, ThumbsDown, ThumbsUp, Send, FileText, UserPlus } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
@@ -14,6 +14,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -35,6 +36,7 @@ function RecommendationResult({ data, loanId, request }: { data: AIState['data']
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [modifiedTerms, setModifiedTerms] = useState(data.modifiedTerms || '');
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const getBadgeVariant = () => {
     switch (data.recommendation) {
@@ -50,7 +52,7 @@ function RecommendationResult({ data, loanId, request }: { data: AIState['data']
   };
 
   const handleDecision = async (status: 'approved' | 'rejected') => {
-    setLoading(true);
+    setLoadingAction(status);
     try {
       const loanRef = doc(db, 'loan_applications', loanId);
       await updateDoc(loanRef, { status });
@@ -67,26 +69,17 @@ function RecommendationResult({ data, loanId, request }: { data: AIState['data']
         description: errorMessage,
       });
     } finally {
-      setLoading(false);
+      setLoadingAction(null);
     }
   };
   
-  const handleModifyAndSend = async () => {
-    if (!modifiedTerms) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Please provide modified terms before sending.'
-      });
-      return;
-    }
-    setLoading(true);
+  const handleModifyAndSend = async (updateData: Partial<LoanApplication>) => {
+    setLoadingAction('modify');
     try {
       const loanRef = doc(db, 'loan_applications', loanId);
       await updateDoc(loanRef, {
         status: 'modified',
-        modifiedTerms: modifiedTerms,
-        // Potentially update amount, term, rate if they are parsed from modifiedTerms
+        ...updateData,
       });
       toast({
         title: 'Sent to Applicant',
@@ -101,10 +94,9 @@ function RecommendationResult({ data, loanId, request }: { data: AIState['data']
         description: errorMessage,
       });
     } finally {
-      setLoading(false);
+      setLoadingAction(null);
     }
   };
-
 
   return (
     <div className="mt-6 space-y-4 rounded-lg border bg-secondary/50 p-4">
@@ -119,28 +111,58 @@ function RecommendationResult({ data, loanId, request }: { data: AIState['data']
         <h5 className="font-semibold">Justification:</h5>
         <p className="text-sm text-muted-foreground">{data.justification}</p>
       </div>
+
       {data.recommendation === 'modify' && (
-        <div className="grid gap-2">
-          <Label htmlFor="modified-terms">Suggested Modifications:</Label>
-          <Textarea id="modified-terms" value={modifiedTerms} onChange={(e) => setModifiedTerms(e.target.value)} className="bg-background" rows={3}/>
+        <div className="space-y-4">
+            {data.requireCoMaker && (
+                 <Alert variant="default" className="bg-background">
+                    <UserPlus className="h-4 w-4" />
+                    <AlertTitle>AI Suggestion: Co-maker</AlertTitle>
+                    <AlertDescription>
+                        The AI suggests requiring a co-maker to mitigate risk.
+                    </AlertDescription>
+                </Alert>
+            )}
+             {data.requireDocuments && (
+                 <Alert variant="default" className="bg-background">
+                    <FileText className="h-4 w-4" />
+                    <AlertTitle>AI Suggestion: Documents</AlertTitle>
+                    <AlertDescription>
+                        The AI suggests requesting additional documents (e.g., proof of income).
+                    </AlertDescription>
+                </Alert>
+            )}
+            <div className="grid gap-2">
+              <Label htmlFor="modified-terms">Custom Terms / Message to Applicant:</Label>
+              <Textarea id="modified-terms" value={modifiedTerms} onChange={(e) => setModifiedTerms(e.target.value)} className="bg-background" rows={3} placeholder="e.g., Interest rate adjusted to 6%. Please provide proof of income."/>
+            </div>
         </div>
       )}
+      
       <div className="flex gap-2 pt-4 flex-wrap">
-        <Button size="sm" onClick={() => handleDecision('approved')} disabled={loading || request.status !== 'pending'}>
-          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-          <ThumbsUp className="mr-2 h-4 w-4" />
+        <Button size="sm" onClick={() => handleDecision('approved')} disabled={!!loadingAction || request.status !== 'pending'}>
+          {loadingAction === 'approved' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4" />}
           Approve
         </Button>
-        {data.recommendation === 'modify' && (
-          <Button size="sm" variant="outline" onClick={handleModifyAndSend} disabled={loading || request.status !== 'pending'}>
-            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+       
+        {data.recommendation === 'modify' && modifiedTerms && (
+          <Button size="sm" variant="outline" onClick={() => handleModifyAndSend({ modifiedTerms })} disabled={!!loadingAction || request.status !== 'pending'}>
+            {loadingAction === 'modify' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Send className="mr-2 h-4 w-4" />
-            Send to Applicant
+            Send Custom Offer
           </Button>
         )}
-        <Button size="sm" variant="destructive" onClick={() => handleDecision('rejected')} disabled={loading || request.status !== 'pending'}>
-           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-           <ThumbsDown className="mr-2 h-4 w-4" />
+         <Button size="sm" variant="outline" onClick={() => handleModifyAndSend({ requiresDocuments: true, modifiedTerms: 'Please upload additional documents for review.' })} disabled={!!loadingAction || request.status !== 'pending'}>
+            {loadingAction === 'request-docs' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <FileText className="mr-2 h-4 w-4" />}
+            Request Documents
+        </Button>
+         <Button size="sm" variant="outline" onClick={() => handleModifyAndSend({ requiresCoMaker: true, modifiedTerms: 'Please add a co-maker to your application.' })} disabled={!!loadingAction || request.status !== 'pending'}>
+            {loadingAction === 'request-comaker' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <UserPlus className="mr-2 h-4 w-4" />}
+            Request Co-maker
+        </Button>
+
+        <Button size="sm" variant="destructive" onClick={() => handleDecision('rejected')} disabled={!!loadingAction || request.status !== 'pending'}>
+           {loadingAction === 'rejected' ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4" />}
           Reject
         </Button>
       </div>

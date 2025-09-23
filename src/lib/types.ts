@@ -25,6 +25,8 @@ export type LoanApplication = {
   creditHistory: string;
   marketConditions: string;
   modifiedTerms?: string;
+  requiresCoMaker?: boolean;
+  requiresDocuments?: boolean;
 };
 
 export type UserPreferences = {
