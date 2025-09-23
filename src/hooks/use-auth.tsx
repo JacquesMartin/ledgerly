@@ -12,8 +12,10 @@ import {
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { doc, setDoc } from 'firebase/firestore';
+import type { UserProfile } from '@/lib/types';
 
 interface AuthContextType {
   user: User | null;
@@ -41,6 +43,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
+  const createUserProfile = async (user: User) => {
+    const userProfile: UserProfile = {
+      uid: user.uid,
+      email: user.email || '',
+      name: user.displayName || '',
+    };
+    await setDoc(doc(db, 'users', user.uid), userProfile);
+  };
+
   const signInWithEmail = async (email: string, password: string) => {
     setLoading(true);
     setError(null);
@@ -60,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName });
+      await createUserProfile(userCredential.user);
       // setUser is called by onAuthStateChanged
       return true;
     } catch (e: any) {
@@ -74,7 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      await createUserProfile(result.user);
       return true;
     } catch (e: any) {
       setError(e.message);

@@ -1,4 +1,5 @@
 
+
 export type Creditor = {
   id: string;
   name: string;
@@ -28,6 +29,14 @@ export type LoanApplication = {
   requiresCoMaker?: boolean;
   requiresDocuments?: boolean;
 };
+
+export type UserProfile = {
+  uid: string;
+  email: string;
+  name: string;
+  contactNumber?: string;
+  address?: string;
+}
 
 export type UserPreferences = {
   currency: 'USD' | 'EUR' | 'GBP' | 'JPY';

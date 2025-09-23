@@ -8,14 +8,59 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import type { LoanApplication } from '@/lib/types';
+import type { LoanApplication, UserProfile } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { CreditorLoanTool } from '@/components/creditor-loan-tool';
 import { useAuth } from '@/hooks/use-auth';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+type EnrichedLoanApplication = LoanApplication & { applicantProfile?: UserProfile };
+
+function ApplicantDetails({ applicantId }: { applicantId: string }) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setLoading(true);
+      const userDocRef = doc(db, 'users', applicantId);
+      const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        setProfile(userDoc.data() as UserProfile);
+      }
+      setLoading(false);
+    };
+    fetchProfile();
+  }, [applicantId]);
+
+  if (loading) {
+    return (
+       <div className="grid md:grid-cols-2 gap-4 mt-4">
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-5 w-1/2" />
+        <Skeleton className="h-5 w-full" />
+      </div>
+    )
+  }
+
+  if (!profile) {
+    return <p className="text-sm text-muted-foreground mt-2">Could not load applicant profile.</p>
+  }
+  
+  return (
+    <div className="text-sm mt-4 space-y-2">
+      <p><strong>Email:</strong> {profile.email}</p>
+      <p><strong>Contact #:</strong> {profile.contactNumber || 'Not provided'}</p>
+      <p><strong>Address:</strong> {profile.address || 'Not provided'}</p>
+    </div>
+  )
+
+}
+
 
 export default function LoanRequestsPage() {
   const { user } = useAuth();
@@ -26,7 +71,6 @@ export default function LoanRequestsPage() {
     if (!user) return;
     setLoading(true);
 
-    // This query fetches pending loan requests where the current user is listed as the CREDITOR.
     const q = query(
       collection(db, 'loan_applications'),
       where('creditorId', '==', user.uid),
@@ -81,25 +125,34 @@ export default function LoanRequestsPage() {
                 </div>
               </AccordionTrigger>
               <AccordionContent className="bg-card p-4 md:p-6 border-t">
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="font-semibold text-muted-foreground text-sm">Loan Details</h4>
-                    <p>
-                      ${request.amount.toLocaleString()} for {request.termMonths} months at {request.interestRate}%
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-muted-foreground text-sm">Loan Purpose</h4>
-                    <p>{request.purpose}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-muted-foreground text-sm">Applicant Credit History</h4>
-                    <p>{request.creditHistory}</p>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-muted-foreground text-sm">Market Conditions</h4>
-                    <p>{request.marketConditions}</p>
-                  </div>
+                <div className="grid md:grid-cols-2 gap-8 mb-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Loan Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm space-y-2">
+                             <p>
+                                <strong>Amount:</strong> ${request.amount.toLocaleString()}
+                            </p>
+                            <p>
+                                <strong>Term:</strong> {request.termMonths} months
+                            </p>
+                            <p>
+                                <strong>Rate:</strong> {request.interestRate}%
+                            </p>
+                            <p>
+                                <strong>Purpose:</strong> {request.purpose}
+                            </p>
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle className="text-base">Applicant Information</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <ApplicantDetails applicantId={request.applicant.uid} />
+                        </CardContent>
+                    </Card>
                 </div>
                 <CreditorLoanTool request={request} />
               </AccordionContent>
