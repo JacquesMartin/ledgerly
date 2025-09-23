@@ -14,10 +14,14 @@ import { collection, onSnapshot, query, where, addDoc, serverTimestamp } from 'f
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUserPreferences } from '@/hooks/use-user-preferences';
+import { formatCurrency } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ApplyPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { preferences, loading: preferencesLoading } = useUserPreferences();
   const [creditors, setCreditors] = useState<Creditor[]>([]);
   const [loadingCreditors, setLoadingCreditors] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
@@ -167,7 +171,7 @@ export default function ApplyPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="grid gap-2">
-                  <Label htmlFor="amount">Loan Amount ($)</Label>
+                  <Label htmlFor="amount">Loan Amount ({preferences.currency})</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -220,9 +224,13 @@ export default function ApplyPage() {
           <CardContent className="space-y-4">
             <div className="space-y-1">
               <div className="text-sm text-muted-foreground">Loan Amount</div>
-              <div className="text-2xl font-bold">
-                ${amount.toLocaleString('en-US') || '0'}
-              </div>
+              {preferencesLoading ? (
+                <Skeleton className="h-8 w-32" />
+              ) : (
+                <div className="text-2xl font-bold">
+                  {formatCurrency(amount, preferences.currency)}
+                </div>
+              )}
             </div>
              <div className="space-y-1">
               <div className="text-sm text-muted-foreground">Interest Rate</div>
@@ -234,9 +242,13 @@ export default function ApplyPage() {
             </div>
             <div className="space-y-1 pt-4 border-t">
               <div className="text-sm text-muted-foreground">Estimated Monthly Payment*</div>
-              <div className="text-3xl font-bold text-accent">
-                ${estimatedMonthlyPayment.toFixed(2)}
-              </div>
+               {preferencesLoading ? (
+                <Skeleton className="h-9 w-36" />
+              ) : (
+                <div className="text-3xl font-bold text-accent">
+                  {formatCurrency(estimatedMonthlyPayment, preferences.currency)}
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground italic">
               *Actual terms may vary.
