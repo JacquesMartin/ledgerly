@@ -36,9 +36,9 @@ export default function RegisterPage() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
-        <div className="mb-4 flex justify-center">
+        <Link href="/" className="mb-4 flex justify-center">
           <Landmark className="h-12 w-12 text-primary" />
-        </div>
+        </Link>
         <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
         <CardDescription>Enter your information to create an account.</CardDescription>
       </CardHeader>

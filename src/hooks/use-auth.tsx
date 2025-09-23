@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: user.email || '',
       name: user.displayName || '',
     };
-    await setDoc(doc(db, 'users', user.uid), userProfile);
+    await setDoc(doc(db, 'users', user.uid), userProfile, { merge: true });
   };
 
   const signInWithEmail = async (email: string, password: string) => {
@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       await signOut(auth);
-      router.push('/login');
+      router.push('/');
     } catch (e: any) {
       setError(e.message);
     } finally {
