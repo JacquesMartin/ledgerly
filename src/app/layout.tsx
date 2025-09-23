@@ -3,6 +3,7 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { AuthProvider } from '@/hooks/use-auth';
 import { UserPreferencesProvider } from '@/hooks/use-user-preferences';
+import { SubscriptionProvider } from '@/hooks/use-subscription';
 
 export const metadata: Metadata = {
   title: 'Ledgerly',
@@ -26,9 +27,11 @@ export default function RootLayout({
       </head>
       <body className="font-body h-full antialiased">
         <AuthProvider>
-          <UserPreferencesProvider>
-            {children}
-          </UserPreferencesProvider>
+          <SubscriptionProvider>
+            <UserPreferencesProvider>
+              {children}
+            </UserPreferencesProvider>
+          </SubscriptionProvider>
         </AuthProvider>
         <Toaster />
       </body>

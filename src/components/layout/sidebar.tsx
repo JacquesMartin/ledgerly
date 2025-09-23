@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -16,6 +17,7 @@ import {
   FileText,
   Landmark,
   User,
+  CreditCard,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -45,6 +47,11 @@ const menuItems = [
     href: '/profile',
     icon: User,
     label: 'Profile',
+  },
+  {
+    href: '/billing',
+    icon: CreditCard,
+    label: 'Billing',
   },
 ];
 

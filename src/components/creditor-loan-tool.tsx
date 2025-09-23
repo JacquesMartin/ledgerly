@@ -6,7 +6,7 @@ import { getLoanAssessment, type AIState } from '@/app/(app)/loan-requests/actio
 import type { LoanApplication } from '@/lib/types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Loader2, Sparkles, ThumbsDown, ThumbsUp, Send, FileText, UserPlus } from 'lucide-react';
+import { Loader2, Sparkles, ThumbsDown, ThumbsUp, Send, FileText, UserPlus, Zap } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
@@ -15,6 +15,8 @@ import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
+import { useSubscription } from '@/hooks/use-subscription';
+import Link from 'next/link';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -170,11 +172,39 @@ function RecommendationResult({ data, loanId, request }: { data: AIState['data']
   );
 }
 
+function UpgradeToProCard() {
+    return (
+        <Card className="mt-6 bg-gradient-to-br from-accent/20 to-primary/10 border-accent/50">
+            <CardHeader>
+                <CardTitle className="font-headline text-accent flex items-center gap-2">
+                    <Zap className="h-6 w-6"/>
+                    Upgrade to Pro
+                </CardTitle>
+                <CardDescription>
+                    Unlock AI-powered loan assessments to make smarter decisions, faster.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">
+                    Our AI assistant can analyze loan applications and provide you with a recommendation and justification in seconds.
+                </p>
+            </CardContent>
+            <CardFooter>
+                 <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+                    <Link href="/billing">Upgrade Now</Link>
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+}
+
+
 type Props = {
   request: LoanApplication;
 };
 
 export function CreditorLoanTool({ request }: Props) {
+  const { subscription, loading } = useSubscription();
   const initialState: AIState = {
     data: null,
     error: null,
@@ -183,6 +213,18 @@ export function CreditorLoanTool({ request }: Props) {
   const [state, formAction] = useFormState(getLoanAssessment, initialState);
 
   const loanDetailsString = `Amount: $${request.amount}, Term: ${request.termMonths} months, Interest: ${request.interestRate}%, Purpose: ${request.purpose}`;
+
+  if (loading) {
+    return (
+        <div className="flex justify-center items-center h-24">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground"/>
+        </div>
+    );
+  }
+
+  if (subscription.plan === 'Free') {
+    return <UpgradeToProCard />;
+  }
 
   return (
     <Card className="border-none shadow-none">
