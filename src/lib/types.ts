@@ -25,3 +25,7 @@ export type LoanApplication = {
   creditHistory: string;
   marketConditions: string;
 };
+
+export type UserPreferences = {
+  currency: 'USD' | 'EUR' | 'GBP' | 'JPY';
+};
