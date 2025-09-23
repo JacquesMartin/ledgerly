@@ -5,10 +5,88 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { format, parseISO } from 'date-fns';
 import { Badge } from '../ui/badge';
-import { CalendarDays, Loader2 } from 'lucide-react';
+import { CalendarDays, GitPullRequest, Loader2, ThumbsUp } from 'lucide-react';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
 import { formatCurrency } from '@/lib/utils';
 import { Skeleton } from '../ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
+
+function ModifiedLoanDialog({ loan, onAccepted }: { loan: LoanApplication, onAccepted: () => void }) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const { preferences, loading: preferencesLoading } = useUserPreferences();
+
+  const handleAccept = async () => {
+    setLoading(true);
+    try {
+      const loanRef = doc(db, 'loan_applications', loan.id);
+      await updateDoc(loanRef, { status: 'approved' });
+      toast({
+        title: 'Success',
+        description: 'You have accepted the modified loan terms.',
+      });
+      onAccepted();
+    } catch (error) {
+      console.error('Error accepting terms:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: errorMessage,
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" size="sm"><GitPullRequest className="mr-2 h-4 w-4" />Review Offer</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Modified Loan Offer</AlertDialogTitle>
+          <AlertDialogDescription>
+            The creditor has proposed new terms for your loan. Please review them carefully.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="my-4 space-y-4 text-sm">
+          <div className="p-4 rounded-md bg-muted/50 border">
+            <h4 className="font-semibold mb-2">Original Request</h4>
+            <p>{preferencesLoading ? <Skeleton className="h-5 w-48"/> : `${formatCurrency(loan.amount, preferences.currency)} for ${loan.termMonths} months at ${loan.interestRate}%`}</p>
+          </div>
+          <div className="p-4 rounded-md bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <h4 className="font-semibold mb-2 text-accent">New Offer</h4>
+            <p className="whitespace-pre-wrap">{loan.modifiedTerms}</p>
+          </div>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Close</AlertDialogCancel>
+          <AlertDialogAction onClick={handleAccept} disabled={loading} className="bg-accent text-accent-foreground hover:bg-accent/90">
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ThumbsUp className="mr-2 h-4 w-4" />}
+            Accept & Finalize
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 
 type Props = {
   loan: LoanApplication;
@@ -16,8 +94,14 @@ type Props = {
 
 export function OutstandingLoanCard({ loan }: Props) {
   const { preferences, loading: preferencesLoading } = useUserPreferences();
+  const [isLoanAccepted, setIsLoanAccepted] = useState(loan.status !== 'modified');
+
   const dueDate = parseISO(loan.dueDate);
   const isOverdue = new Date() > dueDate;
+
+  const handleAccepted = () => {
+    setIsLoanAccepted(true);
+  }
 
   return (
     <Card className="flex flex-col transition-all hover:shadow-lg">
@@ -49,11 +133,19 @@ export function OutstandingLoanCard({ loan }: Props) {
       <CardFooter className="flex justify-between items-center">
         {isOverdue ? (
           <Badge variant="destructive">Overdue</Badge>
-        ) : (
+        ) : isLoanAccepted ? (
           <Badge variant="secondary">{loan.status}</Badge>
+        ) : (
+          <Badge variant="outline" className="text-blue-600 border-blue-600">Action Required</Badge>
         )}
-        <Button variant="ghost" size="sm">View Details</Button>
+
+        {isLoanAccepted ? (
+           <Button variant="ghost" size="sm">View Details</Button>
+        ) : (
+          <ModifiedLoanDialog loan={loan} onAccepted={handleAccepted} />
+        )}
       </CardFooter>
     </Card>
   );
 }
+

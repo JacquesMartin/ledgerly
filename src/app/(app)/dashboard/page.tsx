@@ -23,11 +23,11 @@ export default function DashboardPage() {
     if (!user) return;
     setLoading(true);
 
-    // This query fetches loans where the current user is the BORROWER and the loan is approved.
+    // This query fetches loans where the current user is the BORROWER and the loan is approved OR modified.
     const q = query(
       collection(db, 'loan_applications'),
       where('applicant.uid', '==', user.uid),
-      where('status', '==', 'approved')
+      where('status', 'in', ['approved', 'modified'])
     );
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {

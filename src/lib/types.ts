@@ -7,7 +7,7 @@ export type Creditor = {
 };
 
 export type LoanApplication = {
-  id: string;
+  id:string;
   applicant: {
     uid: string;
     name: string;
@@ -19,13 +19,24 @@ export type LoanApplication = {
   termMonths: number;
   interestRate: number;
   purpose: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'modified';
   date: string; // ISO string
   dueDate: string; // ISO string
   creditHistory: string;
   marketConditions: string;
+  modifiedTerms?: string;
 };
 
 export type UserPreferences = {
   currency: 'USD' | 'EUR' | 'GBP' | 'JPY';
+};
+
+export type Notification = {
+  id: string;
+  recipientId: string;
+  loanId: string;
+  type: 'NEW_LOAN_REQUEST' | 'LOAN_MODIFIED' | 'LOAN_ACCEPTED';
+  message: string;
+  isRead: boolean;
+  createdAt: string; // ISO string
 };

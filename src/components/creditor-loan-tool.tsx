@@ -6,7 +6,7 @@ import { getLoanAssessment, type AIState } from '@/app/(app)/loan-requests/actio
 import type { LoanApplication } from '@/lib/types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Loader2, Sparkles, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Loader2, Sparkles, ThumbsDown, ThumbsUp, Send } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
@@ -29,11 +29,12 @@ function SubmitButton() {
   );
 }
 
-function RecommendationResult({ data, loanId }: { data: AIState['data'], loanId: string }) {
+function RecommendationResult({ data, loanId, request }: { data: AIState['data'], loanId: string, request: LoanApplication }) {
   if (!data) return null;
 
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [modifiedTerms, setModifiedTerms] = useState(data.modifiedTerms || '');
 
   const getBadgeVariant = () => {
     switch (data.recommendation) {
@@ -69,6 +70,40 @@ function RecommendationResult({ data, loanId }: { data: AIState['data'], loanId:
       setLoading(false);
     }
   };
+  
+  const handleModifyAndSend = async () => {
+    if (!modifiedTerms) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Please provide modified terms before sending.'
+      });
+      return;
+    }
+    setLoading(true);
+    try {
+      const loanRef = doc(db, 'loan_applications', loanId);
+      await updateDoc(loanRef, {
+        status: 'modified',
+        modifiedTerms: modifiedTerms,
+        // Potentially update amount, term, rate if they are parsed from modifiedTerms
+      });
+      toast({
+        title: 'Sent to Applicant',
+        description: `Modification proposal has been sent to ${request.applicant.name}.`,
+      });
+    } catch (error) {
+      console.error(`Error updating loan:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
+      toast({
+        variant: 'destructive',
+        title: `Error sending modification`,
+        description: errorMessage,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   return (
@@ -84,24 +119,28 @@ function RecommendationResult({ data, loanId }: { data: AIState['data'], loanId:
         <h5 className="font-semibold">Justification:</h5>
         <p className="text-sm text-muted-foreground">{data.justification}</p>
       </div>
-      {data.recommendation === 'modify' && data.modifiedTerms && (
+      {data.recommendation === 'modify' && (
         <div className="grid gap-2">
           <Label htmlFor="modified-terms">Suggested Modifications:</Label>
-          <Textarea id="modified-terms" defaultValue={data.modifiedTerms} className="bg-background" rows={3}/>
+          <Textarea id="modified-terms" value={modifiedTerms} onChange={(e) => setModifiedTerms(e.target.value)} className="bg-background" rows={3}/>
         </div>
       )}
-      <div className="flex gap-2 pt-4">
-        <Button size="sm" onClick={() => handleDecision('approved')} disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsUp className="mr-2 h-4 w-4" />}
+      <div className="flex gap-2 pt-4 flex-wrap">
+        <Button size="sm" onClick={() => handleDecision('approved')} disabled={loading || request.status !== 'pending'}>
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+          <ThumbsUp className="mr-2 h-4 w-4" />
           Approve
         </Button>
         {data.recommendation === 'modify' && (
-          <Button size="sm" variant="outline" disabled>
-            Apply Mods & Approve
+          <Button size="sm" variant="outline" onClick={handleModifyAndSend} disabled={loading || request.status !== 'pending'}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Send className="mr-2 h-4 w-4" />
+            Send to Applicant
           </Button>
         )}
-        <Button size="sm" variant="destructive" onClick={() => handleDecision('rejected')} disabled={loading}>
-           {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <ThumbsDown className="mr-2 h-4 w-4" />}
+        <Button size="sm" variant="destructive" onClick={() => handleDecision('rejected')} disabled={loading || request.status !== 'pending'}>
+           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+           <ThumbsDown className="mr-2 h-4 w-4" />
           Reject
         </Button>
       </div>
@@ -140,7 +179,7 @@ export function CreditorLoanTool({ request }: Props) {
         </form>
 
         {state.error && <p className="mt-4 text-sm text-destructive">{state.error}</p>}
-        <RecommendationResult data={state.data} loanId={request.id} />
+        <RecommendationResult data={state.data} loanId={request.id} request={request} />
       </CardContent>
     </Card>
   );
