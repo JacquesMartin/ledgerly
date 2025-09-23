@@ -12,38 +12,71 @@ import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
 import { formatCurrency } from '@/lib/utils';
+import { CreditorLoansTable } from '@/components/dashboard/creditor-loans-table';
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { preferences, loading: preferencesLoading } = useUserPreferences();
-  const [loans, setLoans] = useState<LoanApplication[]>([]);
-  const [loading, setLoading] = useState(true);
+  
+  // Loans where user is the applicant
+  const [myLoans, setMyLoans] = useState<LoanApplication[]>([]);
+  const [loadingMyLoans, setLoadingMyLoans] = useState(true);
+
+  // Loans where user is the creditor
+  const [issuedLoans, setIssuedLoans] = useState<LoanApplication[]>([]);
+  const [loadingIssuedLoans, setLoadingIssuedLoans] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
+    setLoadingMyLoans(true);
 
-    // This query fetches loans where the current user is the BORROWER and the loan is approved OR modified.
-    const q = query(
+    const myLoansQuery = query(
       collection(db, 'loan_applications'),
       where('applicant.uid', '==', user.uid),
       where('status', 'in', ['approved', 'modified'])
     );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+    const unsubscribeMyLoans = onSnapshot(myLoansQuery, (querySnapshot) => {
       const loansData: LoanApplication[] = [];
       querySnapshot.forEach((doc) => {
         loansData.push({ id: doc.id, ...doc.data() } as LoanApplication);
       });
-      setLoans(loansData);
-      setLoading(false);
+      setMyLoans(loansData);
+      setLoadingMyLoans(false);
     });
 
-    return () => unsubscribe();
+    return () => unsubscribeMyLoans();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoadingIssuedLoans(true);
+    
+    const issuedLoansQuery = query(
+        collection(db, 'loan_applications'),
+        where('creditorId', '==', user.uid),
+        where('status', 'in', ['approved', 'modified'])
+    );
+
+    const unsubscribeIssuedLoans = onSnapshot(issuedLoansQuery, (querySnapshot) => {
+        const loansData: LoanApplication[] = [];
+        querySnapshot.forEach((doc) => {
+            loansData.push({ id: doc.id, ...doc.data() } as LoanApplication);
+        });
+        setIssuedLoans(loansData);
+        setLoadingIssuedLoans(false);
+    });
+
+    return () => unsubscribeIssuedLoans();
   }, [user]);
   
-  // Mocked data for today's receivables
-  const todaysReceivables = 1250.0;
+  const todaysReceivables = issuedLoans.reduce((total, loan) => {
+    // This is a simplified calculation. A real app would check for payments due *today*.
+    // For now, we'll sum up a fraction of all active issued loans.
+    const monthlyPayment = loan.amount * (loan.interestRate / 100 / 12);
+    return total + monthlyPayment;
+  }, 0);
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -65,7 +98,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {preferencesLoading ? (
+            {preferencesLoading || loadingIssuedLoans ? (
               <Skeleton className="h-9 w-32" />
             ) : (
               <div className="text-4xl font-bold text-accent">
@@ -73,7 +106,7 @@ export default function DashboardPage() {
               </div>
             )}
             <p className="text-xs text-muted-foreground">
-              Total amount due today.
+              Estimated receivables from active loans.
             </p>
           </CardContent>
         </Card>
@@ -83,21 +116,28 @@ export default function DashboardPage() {
         <h2 className="text-2xl font-bold font-headline tracking-tight mb-4">
           My Outstanding Loans
         </h2>
-        {loading ? (
+        {loadingMyLoans ? (
            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-48 w-full" />
            </div>
-        ) : loans.length > 0 ? (
+        ) : myLoans.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {loans.map((loan) => (
+            {myLoans.map((loan) => (
               <OutstandingLoanCard key={loan.id} loan={loan} />
             ))}
           </div>
         ) : (
           <p className="text-muted-foreground">You have no outstanding loans.</p>
         )}
+      </div>
+
+       <div>
+        <h2 className="text-2xl font-bold font-headline tracking-tight mb-4">
+          Active Loans Issued
+        </h2>
+        <CreditorLoansTable loans={issuedLoans} loading={loadingIssuedLoans} />
       </div>
     </div>
   );
