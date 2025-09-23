@@ -18,6 +18,7 @@ import {
   Landmark,
   User,
   CreditCard,
+  BookCopy,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -27,6 +28,11 @@ const menuItems = [
     href: '/dashboard',
     icon: LayoutDashboard,
     label: 'Dashboard',
+  },
+  {
+    href: '/ledger',
+    icon: BookCopy,
+    label: 'Ledger',
   },
   {
     href: '/apply',
