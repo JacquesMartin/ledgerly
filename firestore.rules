@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can manage their own creditors list
+    match /users/{userId}/creditors/{creditorId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Rules for the loan_applications collection
+    match /loan_applications/{applicationId} {
+      // Allow users to create new loan applications
+      allow create: if request.auth != null && request.resource.data.applicant.uid == request.auth.uid;
+
+      // Allow applicant or creditor to read the application
+      allow read: if request.auth != null && (resource.data.applicant.uid == request.auth.uid || resource.data.creditorId == request.auth.uid);
+
+      // Allow creditor to update the status of the application
+      allow update: if request.auth != null && resource.data.creditorId == request.auth.uid;
+    }
+  }
+}
