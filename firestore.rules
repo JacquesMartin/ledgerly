@@ -1,22 +1,129 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow users to manage their own creditors list
-    match /users/{userId}/creditors/{creditorId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // Allow logged-in users to read loan applications
-    // This is less secure but necessary for the current app queries.
-    match /loan_applications/{applicationId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.applicant.uid == request.auth.uid;
-      allow update: if request.auth != null && get(/databases/$(database)/documents/loan_applications/$(applicationId)).data.creditorId == request.auth.uid;
+    
+    // Helper functions for security rules
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
-    // Allow users to read and write to their own preferences
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidUserData() {
+      return request.resource.data.keys().hasAll(['uid', 'email', 'name']) &&
+             request.resource.data.uid == request.auth.uid &&
+             request.resource.data.email is string &&
+             request.resource.data.name is string;
+    }
+    
+    function isValidLoanApplication() {
+      return request.resource.data.keys().hasAll([
+        'applicant', 'creditorId', 'amount', 'termMonths', 
+        'interestRate', 'purpose', 'status', 'date', 'dueDate',
+        'creditHistory', 'marketConditions'
+      ]) &&
+      request.resource.data.applicant.uid == request.auth.uid &&
+      request.resource.data.amount is number &&
+      request.resource.data.amount > 0 &&
+      request.resource.data.termMonths is number &&
+      request.resource.data.termMonths > 0 &&
+      request.resource.data.interestRate is number &&
+      request.resource.data.interestRate >= 0 &&
+      request.resource.data.status in ['pending', 'approved', 'rejected', 'modified'];
+    }
+    
+    function isValidNotification() {
+      return request.resource.data.keys().hasAll([
+        'recipientId', 'loanId', 'type', 'message', 'isRead', 'createdAt'
+      ]) &&
+      request.resource.data.type in ['NEW_LOAN_REQUEST', 'LOAN_MODIFIED', 'LOAN_ACCEPTED'] &&
+      request.resource.data.isRead is bool;
+    }
+
+    // User profiles - users can only manage their own profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserData();
+      allow update: if isOwner(userId) && 
+                   request.resource.data.uid == resource.data.uid; // Prevent UID changes
+    }
+
+    // User preferences - users can only manage their own preferences
     match /user_preferences/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
+      allow create: if isOwner(userId) && 
+                   request.resource.data.currency in ['USD', 'EUR', 'GBP', 'JPY'];
+    }
+
+    // Creditors - users can manage their own creditors list
+    match /users/{userId}/creditors/{creditorId} {
+      allow read, write: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+                   request.resource.data.keys().hasAll(['id', 'name', 'email', 'status']) &&
+                   request.resource.data.status in ['approved', 'pending'];
+    }
+
+    // Loan applications - more secure rules
+    match /loan_applications/{applicationId} {
+      // Users can read loan applications where they are either applicant or creditor
+      allow read: if isAuthenticated() && 
+                 (resource.data.applicant.uid == request.auth.uid || 
+                  resource.data.creditorId == request.auth.uid);
+      
+      // Only applicants can create loan applications
+      allow create: if isAuthenticated() && isValidLoanApplication();
+      
+      // Creditors can update loan applications they own
+      allow update: if isAuthenticated() && 
+                   (resource.data.creditorId == request.auth.uid ||
+                    resource.data.applicant.uid == request.auth.uid) &&
+                   // Prevent changing critical fields after creation
+                   request.resource.data.applicant.uid == resource.data.applicant.uid &&
+                   request.resource.data.creditorId == resource.data.creditorId &&
+                   request.resource.data.amount == resource.data.amount;
+      
+      // Only creditors can delete their own loan applications
+      allow delete: if isAuthenticated() && resource.data.creditorId == request.auth.uid;
+    }
+
+    // Notifications - users can only access their own notifications
+    match /notifications/{notificationId} {
+      allow read, write: if isAuthenticated() && 
+                        resource.data.recipientId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidNotification();
+      allow update: if isAuthenticated() && 
+                   resource.data.recipientId == request.auth.uid &&
+                   // Only allow updating isRead status and message
+                   request.resource.data.recipientId == resource.data.recipientId &&
+                   request.resource.data.loanId == resource.data.loanId &&
+                   request.resource.data.type == resource.data.type &&
+                   request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAuthenticated() && resource.data.recipientId == request.auth.uid;
+    }
+
+    // Subscriptions - users can only manage their own subscription
+    match /subscriptions/{userId} {
+      allow read, write: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+                   request.resource.data.plan in ['Free', 'Pro'];
+    }
+
+    // Payment history - users can only access their own payments
+    match /payments/{paymentId} {
+      allow read, write: if isAuthenticated() && 
+                        (resource.data.payerId == request.auth.uid || 
+                         resource.data.receiverId == request.auth.uid);
+      allow create: if isAuthenticated() && 
+                   request.resource.data.keys().hasAll(['payerId', 'receiverId', 'amount', 'date', 'status']) &&
+                   (request.resource.data.payerId == request.auth.uid || 
+                    request.resource.data.receiverId == request.auth.uid);
+    }
+
+    // Deny all other access by default
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

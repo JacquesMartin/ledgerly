@@ -51,3 +51,17 @@ export type Notification = {
   isRead: boolean;
   createdAt: string; // ISO string
 };
+
+export type Payment = {
+  id: string;
+  loanId: string;
+  payerId: string;
+  receiverId: string;
+  amount: number;
+  date: string; // ISO string
+  status: 'pending' | 'completed' | 'failed' | 'cancelled';
+  paymentMethod: 'bank_transfer' | 'cash' | 'check' | 'digital_wallet';
+  reference?: string;
+  notes?: string;
+  createdAt: string; // ISO string
+};

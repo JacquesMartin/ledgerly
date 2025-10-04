@@ -12,8 +12,11 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Only initialize Firebase in the browser to avoid server-side errors during prerender/build
+const isBrowser = typeof window !== 'undefined';
+
+const app = isBrowser ? (!getApps().length ? initializeApp(firebaseConfig) : getApp()) : (undefined as unknown as ReturnType<typeof initializeApp>);
+const auth = isBrowser ? getAuth(app) : (undefined as unknown);
+const db = isBrowser ? getFirestore(app) : (undefined as unknown);
 
 export { app, auth, db };

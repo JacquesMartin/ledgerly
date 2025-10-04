@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarContent,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -19,6 +20,8 @@ import {
   User,
   CreditCard,
   BookCopy,
+  Bell,
+  DollarSign,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -50,6 +53,16 @@ const menuItems = [
     label: 'Loan Requests',
   },
   {
+    href: '/notifications',
+    icon: Bell,
+    label: 'Notifications',
+  },
+  {
+    href: '/payments',
+    icon: DollarSign,
+    label: 'Payments',
+  },
+  {
     href: '/profile',
     icon: User,
     label: 'Profile',
@@ -63,11 +76,19 @@ const menuItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const { setOpenMobile, isMobile } = useSidebar();
+
+  const handleMenuItemClick = () => {
+    // Close mobile sidebar when a menu item is clicked
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar variant="sidebar" collapsible="icon">
       <SidebarHeader>
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2" onClick={handleMenuItemClick}>
           <Landmark className="h-8 w-8 text-primary" />
           <span className="font-bold text-lg text-foreground group-data-[collapsible=icon]:hidden">
             Ledgerly
@@ -86,7 +107,7 @@ export function AppSidebar() {
                   className: 'bg-primary text-primary-foreground',
                 }}
               >
-                <Link href={item.href}>
+                <Link href={item.href} onClick={handleMenuItemClick}>
                   <item.icon />
                   <span>{item.label}</span>
                 </Link>
