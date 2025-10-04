@@ -2,9 +2,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { useAuth } from '@/hooks/use-auth-supabase';
+import { supabase } from '@/lib/supabase';
 import type { LoanApplication } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
