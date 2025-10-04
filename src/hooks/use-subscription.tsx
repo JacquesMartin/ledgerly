@@ -2,9 +2,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useAuth } from './use-auth';
-import { db } from '@/lib/firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { useAuth } from './use-auth-supabase';
+import { supabase } from '@/lib/supabase';
 import type { Subscription } from '@/lib/subscriptions';
 import { FREE_PLAN } from '@/lib/subscriptions';
 

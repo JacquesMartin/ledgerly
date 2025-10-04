@@ -10,8 +10,7 @@ import { Loader2, Sparkles, ThumbsDown, ThumbsUp, Send, FileText, UserPlus, Zap 
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
-import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';

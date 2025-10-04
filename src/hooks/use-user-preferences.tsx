@@ -2,9 +2,8 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth } from './use-auth';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useAuth } from './use-auth-supabase';
+import { supabase } from '@/lib/supabase';
 import type { UserPreferences } from '@/lib/types';
 
 interface UserPreferencesContextType {
