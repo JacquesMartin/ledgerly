@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from './use-auth';
-import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, limit } from 'firebase/firestore';
+import { useAuth } from './use-auth-supabase';
+import { supabase } from '@/lib/supabase';
 import type { Notification } from '@/lib/types';
 import { useToast } from './use-toast';
 
