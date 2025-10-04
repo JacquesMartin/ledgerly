@@ -44,9 +44,11 @@ export default function LoginPage() {
   };
   
   const handleGoogleLogin = async () => {
-    const success = await signInWithGoogle();
-    if (success) {
-      router.push('/dashboard');
+    try {
+      await signInWithGoogle();
+      // Google OAuth will redirect, so we don't need to handle navigation here
+    } catch (error) {
+      console.error('Google login error:', error);
     }
   };
 

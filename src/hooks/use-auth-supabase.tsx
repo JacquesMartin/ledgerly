@@ -96,12 +96,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`,
+        },
       });
       if (error) {
         setError(error.message);
         setLoading(false);
         return false;
       }
+      // Note: This will redirect, so we don't need to return false here
       return true;
     } catch (e: any) {
       setError(e.message);
