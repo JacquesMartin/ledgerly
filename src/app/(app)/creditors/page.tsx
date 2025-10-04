@@ -27,9 +27,8 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, addDoc, onSnapshot, query, serverTimestamp, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { useAuth } from '@/hooks/use-auth-supabase';
+import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Creditor } from '@/lib/types';
@@ -91,28 +90,22 @@ export default function CreditorsPage() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    const q = query(collection(db, `users/${user.uid}/creditors`));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const creditorsData: EnhancedCreditor[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        creditorsData.push({ 
-          id: doc.id, 
-          ...data,
-          rating: data.rating || 0,
-          totalLoans: data.totalLoans || 0,
-          totalAmount: data.totalAmount || 0,
-          notes: data.notes || '',
-          phone: data.phone || '',
-          address: data.address || '',
-          company: data.company || ''
-        } as EnhancedCreditor);
-      });
-      setCreditors(creditorsData);
-      setLoading(false);
-    });
+    
+    const fetchCreditors = async () => {
+      const { data, error } = await supabase
+        .from('creditors')
+        .select('*')
+        .eq('user_id', user.id);
 
-    return () => unsubscribe();
+      if (error) {
+        console.error('Error fetching creditors:', error);
+      } else {
+        setCreditors(data || []);
+      }
+      setLoading(false);
+    };
+
+    fetchCreditors();
   }, [user]);
 
   // Filter creditors based on search and filters
@@ -137,8 +130,8 @@ export default function CreditorsPage() {
     total: creditors.length,
     approved: creditors.filter(c => c.status === 'approved').length,
     pending: creditors.filter(c => c.status === 'pending').length,
-    totalLoans: creditors.reduce((sum, c) => sum + (c.totalLoans || 0), 0),
-    totalAmount: creditors.reduce((sum, c) => sum + (c.totalAmount || 0), 0),
+    totalLoans: creditors.reduce((sum, c) => sum + (c.total_loans || 0), 0),
+    totalAmount: creditors.reduce((sum, c) => sum + (c.total_amount || 0), 0),
     averageRating: creditors.length > 0 ? 
       (creditors.reduce((sum, c) => sum + (c.rating || 0), 0) / creditors.length).toFixed(1) : '0.0'
   };
@@ -164,19 +157,24 @@ export default function CreditorsPage() {
     }
     setFormLoading(true);
     try {
-      await addDoc(collection(db, `users/${user.uid}/creditors`), {
-        name,
-        email,
-        phone: phone || '',
-        company: company || '',
-        address: address || '',
-        notes: notes || '',
-        status: 'approved',
-        rating: 0,
-        totalLoans: 0,
-        totalAmount: 0,
-        createdAt: serverTimestamp(),
-      });
+      const { error } = await supabase
+        .from('creditors')
+        .insert({
+          user_id: user.id,
+          name,
+          email,
+          phone: phone || '',
+          company: company || '',
+          address: address || '',
+          notes: notes || '',
+          status: 'approved',
+          rating: 0,
+          total_loans: 0,
+          total_amount: 0,
+        });
+      
+      if (error) throw error;
+      
       toast({
         title: 'Success',
         description: 'Creditor added to your personal network.',
@@ -200,15 +198,21 @@ export default function CreditorsPage() {
     if (!user) return;
     setFormLoading(true);
     try {
-      const creditorRef = doc(db, `users/${user.uid}/creditors`, creditor.id);
-      await updateDoc(creditorRef, {
-        name: creditor.name,
-        email: creditor.email,
-        phone: creditor.phone || '',
-        company: creditor.company || '',
-        address: creditor.address || '',
-        notes: creditor.notes || '',
-      });
+      const { error } = await supabase
+        .from('creditors')
+        .update({
+          name: creditor.name,
+          email: creditor.email,
+          phone: creditor.phone || '',
+          company: creditor.company || '',
+          address: creditor.address || '',
+          notes: creditor.notes || '',
+        })
+        .eq('id', creditor.id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
       toast({
         title: 'Success',
         description: 'Creditor updated successfully.',
@@ -229,7 +233,14 @@ export default function CreditorsPage() {
   const handleDeleteCreditor = async (creditorId: string) => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, `users/${user.uid}/creditors`, creditorId));
+      const { error } = await supabase
+        .from('creditors')
+        .delete()
+        .eq('id', creditorId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
       toast({
         title: 'Success',
         description: 'Creditor removed successfully.',
@@ -247,8 +258,14 @@ export default function CreditorsPage() {
   const handleUpdateRating = async (creditorId: string, newRating: number) => {
     if (!user) return;
     try {
-      const creditorRef = doc(db, `users/${user.uid}/creditors`, creditorId);
-      await updateDoc(creditorRef, { rating: newRating });
+      const { error } = await supabase
+        .from('creditors')
+        .update({ rating: newRating })
+        .eq('id', creditorId)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      
       toast({
         title: 'Success',
         description: 'Rating updated successfully.',
@@ -597,9 +614,9 @@ export default function CreditorsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <div className="font-medium">{creditor.totalLoans || 0} loans</div>
+                        <div className="font-medium">{creditor.total_loans || 0} loans</div>
                         <div className="text-muted-foreground">
-                          ${(creditor.totalAmount || 0).toLocaleString()}
+                          ${(creditor.total_amount || 0).toLocaleString()}
                         </div>
                       </div>
                     </TableCell>

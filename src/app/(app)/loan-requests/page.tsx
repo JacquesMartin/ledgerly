@@ -11,10 +11,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { LoanApplication, UserProfile } from '@/lib/types';
 import { format, parseISO } from 'date-fns';
 import { CreditorLoanTool } from '@/components/creditor-loan-tool';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth-supabase';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -27,10 +26,16 @@ function ApplicantDetails({ applicantId }: { applicantId: string }) {
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
-      const userDocRef = doc(db, 'users', applicantId);
-      const userDoc = await getDoc(userDocRef);
-      if (userDoc.exists()) {
-        setProfile(userDoc.data() as UserProfile);
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', applicantId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setProfile(data);
       }
       setLoading(false);
     };
@@ -54,7 +59,7 @@ function ApplicantDetails({ applicantId }: { applicantId: string }) {
   return (
     <div className="text-sm mt-4 space-y-2">
       <p><strong>Email:</strong> {profile.email}</p>
-      <p><strong>Contact #:</strong> {profile.contactNumber || 'Not provided'}</p>
+      <p><strong>Contact #:</strong> {profile.contact_number || 'Not provided'}</p>
       <p><strong>Address:</strong> {profile.address || 'Not provided'}</p>
     </div>
   )
@@ -71,22 +76,22 @@ export default function LoanRequestsPage() {
     if (!user) return;
     setLoading(true);
 
-    const q = query(
-      collection(db, 'loan_applications'),
-      where('creditorId', '==', user.uid),
-      where('status', '==', 'pending')
-    );
+    const fetchRequests = async () => {
+      const { data, error } = await supabase
+        .from('loan_applications')
+        .select('*')
+        .eq('creditor_id', user.id)
+        .eq('status', 'pending');
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const requestsData: LoanApplication[] = [];
-      querySnapshot.forEach((doc) => {
-        requestsData.push({ id: doc.id, ...doc.data() } as LoanApplication);
-      });
-      setRequests(requestsData);
+      if (error) {
+        console.error('Error fetching loan requests:', error);
+      } else {
+        setRequests(data || []);
+      }
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchRequests();
   }, [user]);
 
   return (
@@ -109,11 +114,10 @@ export default function LoanRequestsPage() {
                 <div className="flex w-full items-center justify-between">
                   <div className="flex items-center gap-4">
                     <Avatar>
-                      <AvatarImage src={request.applicant.avatarUrl} alt={request.applicant.name} data-ai-hint={request.applicant.avatarHint} />
-                      <AvatarFallback>{request.applicant.name.charAt(0)}</AvatarFallback>
+                      <AvatarFallback>{request.applicant_id.charAt(0).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-semibold">{request.applicant.name}</div>
+                      <div className="font-semibold">Applicant #{request.applicant_id.slice(0, 8)}</div>
                       <div className="text-sm text-muted-foreground">
                         Requested on {format(parseISO(request.date), 'MMM d, yyyy')}
                       </div>
@@ -135,10 +139,10 @@ export default function LoanRequestsPage() {
                                 <strong>Amount:</strong> ${request.amount.toLocaleString()}
                             </p>
                             <p>
-                                <strong>Term:</strong> {request.termMonths} months
+                                <strong>Term:</strong> {request.term_months} months
                             </p>
                             <p>
-                                <strong>Rate:</strong> {request.interestRate}%
+                                <strong>Rate:</strong> {request.interest_rate}%
                             </p>
                             <p>
                                 <strong>Purpose:</strong> {request.purpose}
@@ -150,7 +154,7 @@ export default function LoanRequestsPage() {
                             <CardTitle className="text-base">Applicant Information</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ApplicantDetails applicantId={request.applicant.uid} />
+                            <ApplicantDetails applicantId={request.applicant_id} />
                         </CardContent>
                     </Card>
                 </div>

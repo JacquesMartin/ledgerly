@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
-import { AuthProvider } from '@/hooks/use-auth';
+import { AuthProvider } from '@/hooks/use-auth-supabase';
 import { UserPreferencesProvider } from '@/hooks/use-user-preferences';
 import { SubscriptionProvider } from '@/hooks/use-subscription';
 

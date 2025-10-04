@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { formatDistanceToNow, format } from 'date-fns';
-import { useNotifications } from '@/hooks/use-notifications';
+import { useNotifications } from '@/hooks/use-notifications-supabase';
 import { Check, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import {
   Select,
@@ -200,7 +200,7 @@ export default function NotificationsPage() {
               {filteredNotifications.map((notification, index) => (
                 <div key={notification.id}>
                   <div className={`p-4 border-l-4 ${getNotificationColor(notification.type)} ${
-                    !notification.isRead ? 'bg-muted/30' : ''
+                    !notification.is_read ? 'bg-muted/30' : ''
                   }`}>
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3 flex-1">
@@ -212,7 +212,7 @@ export default function NotificationsPage() {
                             <Badge variant="secondary" className="text-xs">
                               {getTypeLabel(notification.type)}
                             </Badge>
-                            {!notification.isRead && (
+                            {!notification.is_read && (
                               <Badge variant="destructive" className="text-xs">
                                 Unread
                               </Badge>
@@ -222,14 +222,14 @@ export default function NotificationsPage() {
                             {notification.message}
                           </p>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span>{format(new Date(notification.createdAt), 'MMM d, yyyy h:mm a')}</span>
-                            <span>{formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}</span>
+                            <span>{format(new Date(notification.created_at), 'MMM d, yyyy h:mm a')}</span>
+                            <span>{formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}</span>
                           </div>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2 ml-4">
-                        {!notification.isRead && (
+                        {!notification.is_read && (
                           <Button
                             variant="ghost"
                             size="sm"

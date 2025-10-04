@@ -22,9 +22,8 @@ import {
   FileText,
   Smartphone
 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
-import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { useAuth } from '@/hooks/use-auth-supabase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import type { Payment } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -91,22 +90,22 @@ export default function PaymentsPage() {
     if (!user) return;
     setLoading(true);
 
-    // Query payments where user is either payer or receiver
-    const paymentsQuery = query(
-      collection(db, 'payments'),
-      orderBy('createdAt', 'desc')
-    );
+    const fetchPayments = async () => {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('*')
+        .or(`payer_id.eq.${user.id},receiver_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
 
-    const unsubscribe = onSnapshot(paymentsQuery, (snapshot) => {
-      const paymentsData = snapshot.docs
-        .map(doc => ({ id: doc.id, ...doc.data() } as Payment))
-        .filter(payment => payment.payerId === user.uid || payment.receiverId === user.uid);
-      
-      setPayments(paymentsData);
+      if (error) {
+        console.error('Error fetching payments:', error);
+      } else {
+        setPayments(data || []);
+      }
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchPayments();
   }, [user]);
 
   // Filter payments
@@ -130,10 +129,10 @@ export default function PaymentsPage() {
       .filter(p => p.status === 'completed')
       .reduce((sum, p) => sum + p.amount, 0),
     totalReceived: payments
-      .filter(p => p.receiverId === user?.uid && p.status === 'completed')
+      .filter(p => p.receiver_id === user?.id && p.status === 'completed')
       .reduce((sum, p) => sum + p.amount, 0),
     totalSent: payments
-      .filter(p => p.payerId === user?.uid && p.status === 'completed')
+      .filter(p => p.payer_id === user?.id && p.status === 'completed')
       .reduce((sum, p) => sum + p.amount, 0)
   };
 
@@ -295,7 +294,7 @@ export default function PaymentsPage() {
                 ))
               ) : filteredPayments.length > 0 ? (
                 filteredPayments.map((payment) => {
-                  const isReceived = payment.receiverId === user?.uid;
+                  const isReceived = payment.receiver_id === user?.id;
                   return (
                     <TableRow key={payment.id}>
                       <TableCell className="font-medium">

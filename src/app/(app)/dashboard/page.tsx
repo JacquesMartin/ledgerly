@@ -5,10 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Loader2 } from 'lucide-react';
 import type { LoanApplication } from '@/lib/types';
 import { OutstandingLoanCard } from '@/components/dashboard/outstanding-loan-card';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth-supabase';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { supabase } from '@/lib/supabase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUserPreferences } from '@/hooks/use-user-preferences';
 import { formatCurrency } from '@/lib/utils';
@@ -30,50 +29,50 @@ export default function DashboardPage() {
     if (!user) return;
     setLoadingMyLoans(true);
 
-    const myLoansQuery = query(
-      collection(db, 'loan_applications'),
-      where('applicant.uid', '==', user.uid),
-      where('status', 'in', ['approved', 'modified'])
-    );
+    const fetchMyLoans = async () => {
+      const { data, error } = await supabase
+        .from('loan_applications')
+        .select('*')
+        .eq('applicant_id', user.id)
+        .in('status', ['approved', 'modified']);
 
-    const unsubscribeMyLoans = onSnapshot(myLoansQuery, (querySnapshot) => {
-      const loansData: LoanApplication[] = [];
-      querySnapshot.forEach((doc) => {
-        loansData.push({ id: doc.id, ...doc.data() } as LoanApplication);
-      });
-      setMyLoans(loansData);
+      if (error) {
+        console.error('Error fetching my loans:', error);
+      } else {
+        setMyLoans(data || []);
+      }
       setLoadingMyLoans(false);
-    });
+    };
 
-    return () => unsubscribeMyLoans();
+    fetchMyLoans();
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
     setLoadingIssuedLoans(true);
     
-    const issuedLoansQuery = query(
-        collection(db, 'loan_applications'),
-        where('creditorId', '==', user.uid),
-        where('status', 'in', ['approved', 'modified'])
-    );
+    const fetchIssuedLoans = async () => {
+      const { data, error } = await supabase
+        .from('loan_applications')
+        .select('*')
+        .eq('creditor_id', user.id)
+        .in('status', ['approved', 'modified']);
 
-    const unsubscribeIssuedLoans = onSnapshot(issuedLoansQuery, (querySnapshot) => {
-        const loansData: LoanApplication[] = [];
-        querySnapshot.forEach((doc) => {
-            loansData.push({ id: doc.id, ...doc.data() } as LoanApplication);
-        });
-        setIssuedLoans(loansData);
-        setLoadingIssuedLoans(false);
-    });
+      if (error) {
+        console.error('Error fetching issued loans:', error);
+      } else {
+        setIssuedLoans(data || []);
+      }
+      setLoadingIssuedLoans(false);
+    };
 
-    return () => unsubscribeIssuedLoans();
+    fetchIssuedLoans();
   }, [user]);
   
   const todaysReceivables = issuedLoans.reduce((total, loan) => {
     // This is a simplified calculation. A real app would check for payments due *today*.
     // For now, we'll sum up a fraction of all active issued loans.
-    const monthlyPayment = loan.amount * (loan.interestRate / 100 / 12);
+    const monthlyPayment = loan.amount * (loan.interest_rate / 100 / 12);
     return total + monthlyPayment;
   }, 0);
 
